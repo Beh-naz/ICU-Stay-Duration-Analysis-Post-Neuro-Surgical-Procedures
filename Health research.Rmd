@@ -1,0 +1,483 @@
+---
+title: "Thera_Business_test"
+output: pdf_document
+date: "2023-10-20"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(readxl)
+library(mice)
+library(corrplot)
+library(dplyr)
+```
+
+Task1. Loading the data set:
+```{r}
+test_thera=read_excel("Research Analyst.xlsx")
+test_thera <- as.data.frame(test_thera)
+```
+
+Task2. The names of the variables:
+```{r}
+colnames(test_thera)
+```
+
+Task3. Number of rows and columns:
+```{r}
+number_of_rows <- nrow(test_thera)
+number_of_columns <- ncol(test_thera)
+
+cat("Number of rows:",number_of_rows, "\n")
+cat("Number of columns:",number_of_columns)
+
+```
+
+Task4. Last six rows of "age":
+```{r}
+tail(test_thera$age, 6)
+```
+
+Task5. Replace title of column 4 (gender) to “sex”. Replace title of column 18 (systolic bp preoperative) to “blood pressure”. Run the names of the variables again after. 
+```{r}
+colnames(test_thera)[4] <- "sex"
+colnames(test_thera)[18] <- "blood_pressure"
+
+# I am changing the spaces in the names of the columns that I am going to work with to underlines, to avoid errors.
+colnames(test_thera)[10] <- "duration_of_operation"
+colnames(test_thera)[17] <- "income_bracket"
+
+colnames(test_thera)
+```
+
+Task 6. Replace the values in the income bracket to the following:
+
+“1” = “<10,000”
+“2” = “10,000 to 20,000”
+“3” = “20,001 to 30,000”
+“4” = “30,001 to 40,000”
+“5” = “>40,001”
+
+```{r}
+test_thera$`income_bracket`[test_thera$`income_bracket` == 1] <- "<10,000"
+test_thera$`income_bracket`[test_thera$`income_bracket` == 2] <- "10,000 to 20,000"
+test_thera$`income_bracket`[test_thera$`income_bracket` == 3] <- "20,001 to 30,000"
+test_thera$`income_bracket`[test_thera$`income_bracket` == 4] <- "30,001 to 40,000"
+test_thera$`income_bracket`[test_thera$`income_bracket` == 5] <- ">40,001"
+```
+
+Task 7. Run the first 6 rows of “income bracket”
+```{r}
+head(test_thera$`income_bracket`)
+
+```
+
+Task 8. Preform descriptive analysis on “duration of operation” and “systolic bp preoperative.” Run an appropriate MICE procedure to impute for missing values.
+
+```{r}
+summary(test_thera$`duration_of_operation`)
+summary(test_thera$`blood_pressure`)
+
+# Since the missing data is less than 5% of the total in these two columns, it is a good idea to impute these missing values.
+
+# We can look for the pattern in the missing data of these two columns:
+md.pattern(test_thera[c("duration_of_operation", "blood_pressure")])
+```
+
+We see 1034 rows are complete, 33 of them are missing blood pressure, 11 of them is missing duration of operation, and one data is missing both of them.
+
+Imputing:
+```{r}
+# I am using the default m=5 which is the number of imputations.
+# The method used for imputation is "pmm", which stands for "Predictive Mean Matching". It uses a regression model on the observed data to make a prediction for the missing values.
+imputed_data <- mice(test_thera[, c("duration_of_operation", "blood_pressure")], m=5, method="pmm")
+
+```
+```{r}
+# Checking the imputed data
+summary(imputed_data)
+```
+The summary matrix provides information on how each variable is used in the imputation process for the other variables. A "1" suggests the column (heading) was used as a predictor for the row variable, while a "0" means it was not. In this case, since we were doing imputation on only two columns, this summary may not bee needed, however, with large scale imputations, it is a good idea to obtain this table at the end of the imputation.
+
+```{r}
+# Storing the imputed data into the original data set using the first imputed data set
+test_thera_imputed <- complete(imputed_data, 1)
+test_thera$`duration_of_operation` <- test_thera_imputed$`duration_of_operation`
+test_thera$`blood_pressure` <- test_thera_imputed$`blood_pressure`
+```
+
+
+Task 9. Perform descriptive statistics on five variables of your choice. Develop appropriate graphs on the five variables selected to help present the results to funders.
+```{r}
+summary(test_thera[c("age", "blood_pressure", "duration_of_operation", "income_bracket", "sex")])
+
+```
+We can interpret the summary of the continuous columns as the following:
+
+Age:
+
+Minimum age is 19 years.
+25% (1st Quartile) of the patients are 32 years old or younger.
+The median age (50th percentile) is 44 years, meaning half of the patients are younger than 44, and half are older.
+The average age is approximately 44.83 years.
+75% (3rd Quartile) of the patients are 59 years old or younger.
+The maximum age is 72 years.
+
+Blood Pressure:
+
+The lowest recorded blood pressure is 98.
+25% (1st Quartile) of the patients have a blood pressure of 119.5 or lower.
+The median blood pressure is 137, which means half of the patients have a blood pressure lower than 137, and half have higher.
+The average blood pressure across patients is approximately 137.8.
+75% (3rd Quartile) of the patients have a blood pressure of 156 or lower.
+The highest recorded blood pressure is 176.
+
+Duration of Operation:
+
+The shortest operation lasted 32 minutes
+25% of the operations lasted 44 minutes or less.
+The median operation duration is 59 minutes.
+The average operation duration is approximately 58.13 minutes.
+75% of the operations lasted 72 minutes or less.
+The longest operation lasted 83 minutes.
+
+Since the columns "sex" and "income_bracket" are categorical columns, we cannot analyse them with the summary() function. The following approach using the table() function can generate frequency counts and is more appropriate for the categorical variables.
+```{r}
+# For age
+age_freq <- table(test_thera$age)
+
+# For income_bracket
+# First, we order the labels of the categories of income bracket
+test_thera$income_bracket <- factor(test_thera$income_bracket, levels=c("<10,000", "10,000 to 20,000", "20,001 to 30,000", "30,001 to 40,000", ">40,001"))
+
+income_freq <- table(test_thera$income_bracket)
+
+
+# To generate percentage:
+age_percent <- prop.table(age_freq) * 100
+income_percent <- prop.table(income_freq) * 100
+
+print("age percentage:")
+age_percent
+cat("income bracket percentage:")
+income_percent
+```
+Age Distribution:
+
+Some key observations are:
+
+The age group with the highest percentage of individuals is 59 years old, representing about 3.71% of the sample.
+Ages 27 and 39 also have notably high percentages, with approximately 3.71% and 3.05% of the sample, respectively.
+In contrast, the age groups 52 and 50 have the lowest representation, each constituting only around 0.37% and 0.74% of the sample, respectively.
+Generally, the age distribution appears varied, with different age groups representing between ~0.37% to ~3.71% of the sample.
+
+Income Bracket Distribution:
+
+The data offers a breakdown of individuals based on their income brackets. Here's a breakdown:
+
+The most common income bracket is "30,001 to 40,000", with approximately 23.45% of individuals falling into this category.
+The brackets "20,001 to 30,000" and ">40,001" have almost the same percentage with about 20% of the sample.
+The least common income bracket is "10,000 to 20,000", with 17.24% of the sample.
+The distribution suggests a relatively balanced representation across income brackets in the sample, though more individuals lie in the "30,001 to 40,000" bracket compared to others.
+
+
+To effectively visualize the distribution of our data, we adopt the following approach:
+
+For categorical columns, we employ Bar Charts or Pie Charts to provide a clear representation of category frequencies.
+For continuous columns, we utilize histograms to showcase the distribution of data points across different ranges.
+
+Age: Bar Chart
+```{r}
+
+barplot(age_freq, main="Distribution of Age", xlab="Age", ylab="Frequency")
+
+```
+From our data, we observe that the age group with the highest number of patients is around 59 years, accounting for approximately 40 patients, followed closely by the age group of 27 years with around 35 patients. On the contrary, the age group of 52 years has the fewest patients, with only about 3 individuals. These observations are consistent with the summary statistics we previously examined. Furthermore, the broad age range, spanning from 19 to 72 years, suggests that individuals across various decades of life are susceptible to blood pressure-related concerns.
+
+Income bracket: Bar Chart
+```{r}
+# Determining the height of the tallest bar
+max_value <- max(income_freq)
+
+# Adding a margin (I'm adding 10% of the tallest bar's height)
+margin <- max_value * 0.10
+
+# Creating the bar chart and capturing the bar centers
+bar_centers <- barplot(income_freq, ylim=c(0, max_value + margin), main="Distribution of Income Bracket", xlab="Income Bracket", xaxt="n")
+
+# Adjusting the size of the x-axis labels
+axis(1, at=bar_centers, labels=names(income_freq), cex.axis=0.7)
+
+# Using the text() function to place the frequency values on top of each bar
+text(x = bar_centers, y = income_freq + 5, labels = income_freq, pos = 3, cex = 0.8)
+```
+
+From the histogram representing Income Brackets, we observe that the income bracket of "10,000 to 20,000" has the lowest number of patients, with a count of 186. Conversely, the "30,001 to 40,000" bracket has the highest patient count, with 253 individuals. This indicates a notable difference in the distribution of patients across these income ranges.
+
+Blood pressure: Histogram
+```{r}
+# Creating the histogram
+hist_data <- hist(test_thera$blood_pressure, 
+                 main="Blood Pressure Distribution", 
+                 xlab="Blood Pressure", 
+                 col="lightgreen", 
+                 border="black",
+                 plot = TRUE)  
+
+# Adding the counts on top of each bar
+text(x = hist_data$mids, 
+     y = hist_data$counts, 
+     labels = hist_data$counts, 
+     pos = 3, 
+     cex = 0.8, 
+     col = "black")
+
+```
+
+
+From the histogram illustrating the distribution of blood pressures among patients, we observe a peak in frequency for blood pressures ranging between 115 and 120, accounting for 100 patients. In contrast, the least frequent blood pressure range is between 95 and 100, with only 14 patients. The overall distribution appears to be approximately normal.
+
+
+Duration of operation: Histogram
+```{r}
+hist_data <- hist(test_thera$duration_of_operation, main="Distribution of Operation Duration", xlab="Duration (in hours)", col="lightcoral", border="black", plot = TRUE)
+
+# Adding the counts on top of each bar
+text(x = hist_data$mids, 
+     y = hist_data$counts, 
+     labels = hist_data$counts, 
+     pos = 3, 
+     cex = 0.8, 
+     col = "black")
+
+```
+Analyzing the histogram depicting the distribution of operation durations, we discern that the majority of operations, totaling 123, spanned between 65 to 70 minutes. On the other end of the spectrum, the least frequent duration—encompassing 76 operations—ranged from 80 to 85 minutes. The overall pattern of this distribution approximates a normal curve.
+
+Sex: Pie Chart
+```{r}
+pie(table(test_thera$sex), main="Distribution by Gender", col=c("lightpink", "lightcyan"))
+
+```
+From the sex pie chart, we see that the number of female patients is just over the number of male patients.
+
+Pairwise plotting allows us to visualize bivariate relationships between multiple pairs of variables. By juxtaposing scatter plots of two variables against each other, we can discern patterns, correlations, or potential anomalies. Here, we aim to explore relationships between the variables "age", "blood_pressure", "duration_of_operation", "sex", and "income_bracket". However, the pair() function requires numeric input for effective visualization. Consequently, we will first transform the character columns, namely "sex" and "income_bracket", into numeric equivalents. Once this transformation is complete, we will proceed with the pairwise plotting.
+
+```{r}
+# Converting to character
+test_thera$income_bracket <- as.character(test_thera$income_bracket)
+
+# Replacing
+test_thera$income_bracket[test_thera$income_bracket == "<10,000"] <- 1 
+test_thera$income_bracket[test_thera$income_bracket == "10,000 to 20,000"] <- 2 
+test_thera$income_bracket[test_thera$income_bracket == "20,001 to 30,000"] <- 3 
+test_thera$income_bracket[test_thera$income_bracket == "30,001 to 40,000"] <- 4 
+test_thera$income_bracket[test_thera$income_bracket == ">40,001"] <- 5
+
+# Converting to numeric
+test_thera$income_bracket <- as.numeric(test_thera$income_bracket)
+
+# Repeating for sex column
+test_thera$sex <- as.character(test_thera$sex)
+test_thera$sex[test_thera$sex == "female"] <- 1
+test_thera$sex[test_thera$sex == "male"] <- 0
+test_thera$sex <- as.numeric(test_thera$sex)
+
+```
+
+Plotting the pairwise scatter plots:
+```{r}
+data <- test_thera[c("age", "blood_pressure", "duration_of_operation", "sex", "income_bracket")]
+
+pairs(data, pch=19, cex=0.5)
+
+```
+After examining the pairwise scatter plots for the selected variables – "age", "blood_pressure", "duration_of_operation", "sex", and "income_bracket" – no discernible patterns, linear relationships, or clusters emerge. The points appear uniformly distributed across the various plots, implying a lack of strong correlation or association between these specific pairs of variables. 
+
+
+Task 10. The HQOL measurements collected at follow-up visits suggested to group those who spent only 1 or 2 days in the NICU as a “low-risk” group. Those who spent greater than 2 days are therefore categorized as the “high-risk” group. Please evaluate the variables on your data set for the comparison of characteristics between patients who are “low-risk” compared to “high-risk”. After your analysis, please explain the reasons for choosing the specific test you employed.
+
+Creating a new column called "risk_category".
+```{r}
+test_thera$risk_category <- ifelse(test_thera$`days in the NICU` %in% c(1, 2), "low-risk", "high-risk")
+```
+
+Here, we check which numerical variables follow a normal distribution.
+```{r}
+continuous_vars <- test_thera[c("age", "blood_pressure", "duration_of_operation", "GCS")]
+
+# Setting up the plotting window
+par(mfrow=c(ceiling(length(continuous_vars)/2), 2))  # Adjust the plotting window to fit multiple plots
+
+# Loop through each column in continuous_vars and create a histogram
+for (var in names(continuous_vars)) {
+  hist(test_thera[[var]], 
+       main=paste("Histogram of", var),
+       xlab="Standardized Value",
+       ylab="Frequency",
+       col="lightblue",
+       border="black")
+}
+
+```
+Upon visual inspection of the histograms:
+
+The distributions of "blood_pressure", "age", and "duration of operation" closely resemble a normal distribution. Given this, it's appropriate to normalize these variables further if needed and subsequently use the t-test to test differences in their means between the two "risk_category" groups.
+
+On the other hand, the distribution of "GCS" is right-skewed. Given the non-normal nature of this data, the Mann-Whitney U Test (or Wilcoxon Rank-Sum Test) becomes the test of choice to determine if there are statistically significant differences in the "GCS" medians between the two "risk_category" groups.
+
+It's worth noting that since "risk_category" was derived from the variable "days in the NICU", it is inherently dependent on it. Therefore, it's expected that any test of association between "days in the NICU" and "risk_category" would show high statistical significance, making further testing redundant for this specific variable.
+
+Normalization of the continuous variables:
+```{r}
+normal_continuous_vars <- test_thera[c("age", "blood_pressure", "duration_of_operation")]
+
+# Normalizing each column in normal_continuous_vars
+for (var in names(normal_continuous_vars)) {
+  test_thera[[var]] <- (test_thera[[var]] - mean(test_thera[[var]], na.rm = TRUE)) / 
+                       sd(test_thera[[var]], na.rm = TRUE)
+}
+
+```
+Drawing the histogram for the normalized columns:
+```{r}
+# Setting up the plotting window
+par(mfrow=c(ceiling(length(normal_continuous_vars)/2), 2))  # Adjust the plotting window to fit multiple plots
+
+# Loop through each column in continuous_vars and create a histogram
+for (var in names(normal_continuous_vars)) {
+  hist(test_thera[[var]], 
+       main=paste("Histogram of", var),
+       xlab="Standardized Value",
+       ylab="Frequency",
+       col="lightblue",
+       border="black")
+}
+
+```
+Now we use t-test on the normalized columns to find if they are statically significantly different.
+
+```{r}
+results <- list()
+
+for (var in colnames(normal_continuous_vars)) {
+    t_result <- t.test(normal_continuous_vars[[var]] ~ test_thera$risk_category, var.equal = TRUE)
+    results[[var]] <- t_result
+}
+
+results
+
+```
+The p-value of the variables "blood_pressure", "age", and "duration of operation" are less than 0.05, indicating that there is a significant difference in blood pressure, age, and duration of operation between the two groups of patients, namely the 'low risk' and 'high risk'.
+
+Now we use the Mann-Whitney U Test (Wilcoxon Rank-Sum Test) on the variable "GCS".
+```{r}
+skewed_continuous_vars <- test_thera[c("GCS")]
+result_GCS <- wilcox.test(test_thera$GCS ~ test_thera$risk_category)
+result_days_in_NICU <- wilcox.test(test_thera$`days in the NICU` ~ test_thera$risk_category)
+result_GCS
+result_days_in_NICU
+```
+Since the p-value is less than 0.05, the variable GCS is statistically significantly different between the two groups.
+
+
+Using X^2 test on the categorical variables:
+```{r}
+categorical_vars <- c("sex", "hospital code", "type of surgery", "use of postoperative drain",
+                      "entry of paranasal sinus", "CSF leak", "diabetes mellitus", 
+                      "SSI", "discharge status", "glucorticoids", "lumbar drainage", "income_bracket")
+
+results <- list()
+
+for (var in categorical_vars) {
+  contingency_table <- table(test_thera[[var]], test_thera$risk_category)
+  
+  # We can add a condition here to check for expected counts in the contingency table 
+  # and decide between chisq.test and fisher.test based on the results.
+  if (min(chisq.test(contingency_table)$expected) < 5) {
+    # Using Fisher's exact test if any expected count is below 5
+    test_result <- fisher.test(contingency_table)
+  } else {
+    test_result <- chisq.test(contingency_table)
+  }
+  
+  results[[var]] <- test_result
+}
+
+# Printing results
+results
+
+
+```
+Based on all the tests on the variables, the following variables were statistically significantly different in the response groups (meaning their p-value were less than 0.05):
+
+"age", "sex", "hospital code", "duration of operation", "GCS", "lumbar drainage", "blood_pressure"
+
+Task 11. Thereafter, please analyze the likelihood of being in either “low-risk” or “high-risk” based on the different factors. Univariate analysis should be followed by multivariate analysis for all associated factors which were statistically significantly different (level of significance at 5%).
+
+In order to fit our logistic regression model on the selected variables, we need to ensure that categorical variables are properly represented. One commonly used method for representing categorical variables in models is one-hot encoding, where each category of a variable gets its own binary column indicating the presence or absence of that category.
+
+Fortunately, the logistic regression function glm() in R can handle categorical variables without the need for explicit one-hot encoding. It automatically creates dummy variables for each level of the factor (with one level omitted to avoid multicollinearity).
+
+Before proceeding, it's essential to convert the categorical variables into factors, ensuring they are correctly interpreted by the glm() function:
+```{r}
+test_thera$sex <- as.factor(test_thera$sex)
+test_thera$`hospital code` <- as.factor(test_thera$`hospital code`)
+test_thera$`lumbar drainage` <- as.factor(test_thera$`lumbar drainage`)
+
+```
+Changing the risk_category column to 0 and 1 for using it in the model:
+
+```{r}
+test_thera$risk_category <- as.character(test_thera$risk_category)
+test_thera$risk_category[test_thera$risk_category == "high-risk"] <- 1
+test_thera$risk_category[test_thera$risk_category == "low-risk"] <- 0
+test_thera$risk_category <- as.numeric(test_thera$risk_category)
+
+```
+
+Fitting the glm model and computing the likelihood:
+```{r}
+multivariate_model <- glm(risk_category ~ age + sex + `hospital code` + `duration_of_operation` + GCS + `lumbar drainage` + blood_pressure, data=test_thera, family=binomial())
+
+summary(multivariate_model)
+
+log_lik <- logLik(multivariate_model)
+log_lik
+```
+Now we do the univariate modeling for all the statistically significantly different variables and compute the likelihood of each model:
+
+```{r}
+# List of significant predictors
+significant_predictors <- c("age", "sex", "duration_of_operation", "GCS", "`lumbar drainage`", "blood_pressure")
+
+
+# Creating list to store univariate model results and log-likelihoods
+univariate_results <- list()
+
+# Looping through each significant predictor and fitting a univariate model
+for (predictor in significant_predictors) {
+    formula <- as.formula(paste("risk_category ~", predictor))
+    model <- glm(formula, data=test_thera, family=binomial())
+
+    logLik_value <- logLik(model)
+
+    # Storing both the summary and the log-likelihood in a list
+    univariate_results[[predictor]] <- list(
+        summary = summary(model),
+        logLik = logLik_value
+    )
+}
+
+univariate_results
+```
+Interpretation of Log-Likelihood:
+
+The log-likelihood gives the logarithm of the likelihood function at its maximum and represents how well the model explains the observed data. A higher value of the log-likelihood indicates a model that explains the data better. In other words, models with values closer to zero (less negative) are preferable.
+
+Comparison with Univariate Models:
+
+The multivariate_model has a log-likelihood of -333.0773, which is higher than all the univariate models. This means that, when considered altogether, the predictors in the multivariable model offer a better explanation of the data compared to when they are considered individually.
+
+Conclusion:
+
+The multivariable model is the best fit among the models we've compared. This suggests that the combined effect of the predictors in the multivariate model provides a better understanding of the outcome variable than any single predictor on its own.
