@@ -10,17 +10,10 @@ The dataset, [Research Analyst.xlsx](https://github.com/Beh-naz/ICU-Stay-Duratio
 
 ## Installation
 Required packages:
-
-library(readxl)
-
-
-library(mice)
-
-
-library(corrplot)
-
-
-library(dplyr)
+* library(readxl)
+* library(mice)
+* library(corrplot)
+* library(dplyr)
 
 ###  Data Loading
 Data is loaded into R with the `read_excel` function and labeled as `test_thera`.
