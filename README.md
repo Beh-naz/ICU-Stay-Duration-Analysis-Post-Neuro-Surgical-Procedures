@@ -4,7 +4,7 @@
 This project investigates factors associated with the duration of ICU stays post neuro-surgical procedures in ten tertiary hospitals in New York City. An observational study was conducted using random sampling to retrieve patient records for surgeries performed from February 14, 2016, to March 5, 2017. 
 
 ## Data Description
-The dataset, “Research Analyst.xlsx,” contains patient records including demographic, clinical, and socioeconomic information, as well as post-operative outcomes.
+The dataset, [Research Analyst.xlsx](https://github.com/Beh-naz/ICU-Stay-Duration-Analysis-Post-Neuro-Surgical-Procedures/blob/main/Research%20Analyst.xlsx), contains patient records including demographic, clinical, and socioeconomic information, as well as post-operative outcomes.
 
 ## Steps and Methods
 
